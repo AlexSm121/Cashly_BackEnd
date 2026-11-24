@@ -11,6 +11,7 @@ API REST do **Cashly**, aplicativo de controle financeiro pessoal. Desenvolvida 
 - [⚙️ Configuração do Ambiente](#️-configuração-do-ambiente)
 - [🐳 Rodando com Docker](#-rodando-com-docker)
 - [📋 Variáveis de Ambiente](#-variáveis-de-ambiente)
+- [🎟️ Feed de Cupons](#️-feed-de-cupons)
 - [📖 Documentação da API](#-documentação-da-api)
 - [🔒 Autenticação](#-autenticação)
 - [🤝 Contribuição](#-contribuição)
@@ -123,6 +124,9 @@ docker compose down -v
 | `MYSQL_USER` | Usuário da aplicação |
 | `MYSQL_PASSWORD` | Senha do usuário da aplicação |
 | `DB_URL` | URL de conexão JDBC (ex: `jdbc:mysql://db:3306/cashly`) |
+| `COUPON_API_URL` | URL do feed de cupons da rede de afiliados (vazio = modo demo) |
+| `COUPON_API_KEY` | Chave/token enviada como `Authorization: Bearer ...` |
+| `COUPON_CACHE_MINUTES` | TTL do cache do feed em minutos (padrão `15`) |
 
 ---
 
@@ -135,6 +139,35 @@ http://localhost:8080/docs
 ```
 
 A interface do Swagger UI permite visualizar e testar todos os endpoints disponíveis.
+
+---
+
+## 🎟️ Feed de Cupons
+
+O feed busca cupons de uma API externa de afiliados e expõe uma API normalizada para o app. Sem credenciais, usa automaticamente 10 cupons de exemplo.
+
+### Endpoints
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/coupons?category=&q=&store=&refresh=false` | Lista cupons com filtros e busca (ignora acentos) |
+| `GET` | `/coupons/categories` | Categorias disponíveis no feed |
+| `GET` | `/coupons/{id}` | Detalhes de um cupom |
+| `POST` | `/coupons/{id}/use` | Registra uso (copiar código / abrir loja) |
+
+### Como plugar uma rede de afiliados
+
+Defina no `.env`:
+
+```bash
+COUPON_API_URL=https://api.sua-rede.com/v1/coupons
+COUPON_API_KEY=seu_token
+COUPON_CACHE_MINUTES=15
+```
+
+O `AffiliateCouponProvider` faz a requisição com `Authorization: Bearer <token>` e normaliza respostas em array ou nos formatos `{ coupons: [...] }`, `{ data: [...] }`, `{ results: [...] }`, etc. Campos aceitos (entre outros): `storeName`/`merchant`, `couponCode`/`code`, `discount`, `category`, `affiliateUrl`/`trackingUrl`, `expiresAt`. Se a API falhar ou estiver vazia, o `DemoCouponProvider` assume automaticamente.
+
+> Não é feito scraping de sites de cupons: a integração deve usar apenas APIs oficiais da rede de afiliados.
 
 ---
 
